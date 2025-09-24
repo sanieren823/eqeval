@@ -1,0 +1,7 @@
+[package]
+name = "eqeval"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rust_decimal = { version = "1.38.0", features = ["macros", "maths", "rand"] }
