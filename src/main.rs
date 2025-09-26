@@ -84,7 +84,7 @@ enum StackingVec {
 fn main() {
     println!("Hello, world!");
     let number = dec!(-1.23);
-    println!("{:?}", layerize("#32! + (9^0.35) * 1^2@8 - (4 + 5(3sin(0.213) - 9)) * abs(2.23) + #0 + 7.0cos(-31.9)(3)!"));
+    println!("{:?}", layerize("#32! + (9^0.35) * 1^2!@8 - (4 + 5(3sin(0.213) - 9)) * abs(2.23) + #0 + 7.0cos(-31.9)(3)!^2"));
 }
 
 
@@ -260,8 +260,17 @@ fn layer_at_exp(sv: StackingVec) -> StackingVec {
                         StackingVec::String(string) => {
                             if ["^", "@"].contains(&string.as_str()) {
                                 if i > 0 && i < vec.len() - 1 {
-                                    let last = return_vec.last().unwrap().clone();
+                                    let mut last = return_vec.last().unwrap().clone();
                                     return_vec.pop();
+                                    match last {
+                                        StackingVec::String(ref string) => {
+                                            if string == "!" {
+                                                last = StackingVec::Vector(Box::new(vec![return_vec.last().unwrap().clone(), StackingVec::String("!".to_string())]));
+                                                return_vec.pop();
+                                            }
+                                        },
+                                        StackingVec::Vector(ref vec) => (),
+                                    }
                                     return_vec.push(StackingVec::Vector(Box::new(vec![last, StackingVec::String(string.clone()), vec[i + 1].clone()])));
                                     skip = true;
                                 }
