@@ -133,7 +133,6 @@ fn eval(equation: &str, deg: bool, custom_vars: Vec<&str>) { // i'd change the p
     let injected: String = inject_vars(equation, custom_vars);
     let layerized: StackingVec = layerize(&injected);
     let cleaned: StackingVec = clean(layerized);
-    println!("i");
     println!("{:?}", cleaned);
     // let decimalized = 
 
@@ -447,7 +446,6 @@ fn merge(vec: &Vec<char>) -> Vec<String> {
     new_vec
 }
 
-// TODO: convert to parameter type: StackingVec
 fn layer_at_bracket(sv: StackingVec) -> StackingVec {
     let sep1 = "(";
     let sep2 = ")";
@@ -488,7 +486,7 @@ fn layer_at_fn(sv: StackingVec) -> StackingVec {
     let mut return_vec: Vec<StackingVec> = Vec::new();
     let mut skip: bool = false;
     match sv {
-        StackingVec::String(String) => (),
+        StackingVec::String(string) => return StackingVec::String(string),
         StackingVec::Vector(vec) => {
             for (i, el) in vec.iter().enumerate() {
                 if skip {
@@ -498,7 +496,7 @@ fn layer_at_fn(sv: StackingVec) -> StackingVec {
                         StackingVec::String(string) => {
                             if string.clone().chars().all(|chr| chr.is_alphabetic()) {
                                 if i < vec.len() - 1 {
-                                    return_vec.push(StackingVec::Vector(Box::new(vec![StackingVec::String(string.clone()), vec[i + 1].clone()])));
+                                    return_vec.push(StackingVec::Vector(Box::new(vec![StackingVec::String(string.clone()), layer_at_fn(vec[i + 1].clone())])));
                                     skip = true;
                                 }
                             } else {
@@ -520,7 +518,7 @@ fn layer_at_exp(sv: StackingVec) -> StackingVec {
     let mut return_vec: Vec<StackingVec> = Vec::new();
     let mut skip: bool = false;
     match sv {
-        StackingVec::String(String) => (),
+        StackingVec::String(string) => return StackingVec::String(string),
         StackingVec::Vector(vec) => {
             for (i, el) in vec.iter().enumerate() {
                 if skip {
@@ -541,7 +539,7 @@ fn layer_at_exp(sv: StackingVec) -> StackingVec {
                                         },
                                         StackingVec::Vector(ref vec) => (),
                                     }
-                                    return_vec.push(StackingVec::Vector(Box::new(vec![last, StackingVec::String(string.clone()), vec[i + 1].clone()])));
+                                    return_vec.push(StackingVec::Vector(Box::new(vec![last, StackingVec::String(string.clone()), layer_at_exp(vec[i + 1].clone())])));
                                     skip = true;
                                 }
                             } else {
@@ -564,7 +562,7 @@ fn layer_at_fact(sv: StackingVec) -> StackingVec {
     let mut return_vec: Vec<StackingVec> = Vec::new();
     let mut skip: bool = false;
     match sv {
-        StackingVec::String(String) => (),
+        StackingVec::String(string) => return StackingVec::String(string),
         StackingVec::Vector(vec) => {
             for (i, el) in vec.iter().enumerate() {
                 match el {
@@ -594,7 +592,7 @@ fn layer_at_mod(sv: StackingVec) -> StackingVec {
     let mut return_vec: Vec<StackingVec> = Vec::new();
     let mut skip: bool = false;
     match sv {
-        StackingVec::String(String) => (),
+        StackingVec::String(string) => return StackingVec::String(string),
         StackingVec::Vector(vec) => {
             for (i, el) in vec.iter().enumerate() {
                 if skip {
@@ -606,7 +604,7 @@ fn layer_at_mod(sv: StackingVec) -> StackingVec {
                                 if i > 0 && i < vec.len() - 1 {
                                     let last = return_vec.last().unwrap().clone();
                                     return_vec.pop();
-                                    return_vec.push(StackingVec::Vector(Box::new(vec![last, StackingVec::String(string.clone()), vec[i + 1].clone()])));
+                                    return_vec.push(StackingVec::Vector(Box::new(vec![last, StackingVec::String(string.clone()), layer_at_mod(vec[i + 1].clone())])));
                                     skip = true;
                                 }
                             } else {
@@ -629,7 +627,7 @@ fn layer_at_mplv(sv: StackingVec) -> StackingVec {
     let mut return_vec: Vec<StackingVec> = Vec::new();
     let mut skip: bool = false;
     match sv {
-        StackingVec::String(String) => (),
+        StackingVec::String(string) => return StackingVec::String(string),
         StackingVec::Vector(vec) => {
             for (i, el) in vec.iter().enumerate() {
                 if skip {
@@ -641,7 +639,7 @@ fn layer_at_mplv(sv: StackingVec) -> StackingVec {
                                 if i > 0 && i < vec.len() - 1 {
                                     let last = return_vec.last().unwrap().clone();
                                     return_vec.pop();
-                                    return_vec.push(StackingVec::Vector(Box::new(vec![last, StackingVec::String(string.clone()), vec[i + 1].clone()])));
+                                    return_vec.push(StackingVec::Vector(Box::new(vec![last, StackingVec::String(string.clone()), layer_at_mplv(vec[i + 1].clone())])));
                                     skip = true;
                                 }
                             } else {
@@ -664,7 +662,7 @@ fn layer_at_neg(sv: StackingVec) -> StackingVec {
     let mut return_vec: Vec<StackingVec> = Vec::new();
     let mut skip: bool = false;
     match sv {
-        StackingVec::String(String) => (),
+        StackingVec::String(string) => return StackingVec::String(string),
         StackingVec::Vector(vec) => {
             for (i, el) in vec.iter().enumerate() {
                 if skip {
@@ -673,10 +671,13 @@ fn layer_at_neg(sv: StackingVec) -> StackingVec {
                     match el {
                         StackingVec::String(string) => {
                             if "-" == string.to_string() {
-                                if i < vec.len() - 1 {
+                                println!("{:?}", el);
+                                if i > 0 && i < vec.len() - 1 {
                                     return_vec.push(StackingVec::String("+".to_string()));
-                                    return_vec.push(StackingVec::Vector(Box::new(vec![StackingVec::String(string.clone()), vec[i + 1].clone()])));
+                                    return_vec.push(StackingVec::Vector(Box::new(vec![StackingVec::String(string.clone()), layer_at_neg(vec[i + 1].clone())])));
                                     skip = true;
+                                } else if i == 0 {
+                                    return_vec.push(StackingVec::String("-".to_string()));
                                 }
                             } else {
                                 return_vec.push(el.clone());
@@ -697,7 +698,7 @@ fn layer_at_add(sv: StackingVec) -> StackingVec {
     let mut return_vec: Vec<StackingVec> = Vec::new();
     let mut skip: bool = false;
     match sv {
-        StackingVec::String(String) => (),
+        StackingVec::String(string) => return StackingVec::String(string),
         StackingVec::Vector(vec) => {
             for (i, el) in vec.iter().enumerate() {
                 if skip {
@@ -709,7 +710,7 @@ fn layer_at_add(sv: StackingVec) -> StackingVec {
                                 if i > 0 && i < vec.len() - 1 {
                                     let last = return_vec.last().unwrap().clone();
                                     return_vec.pop();
-                                    return_vec.push(StackingVec::Vector(Box::new(vec![last, StackingVec::String(string.clone()), vec[i + 1].clone()])));
+                                    return_vec.push(StackingVec::Vector(Box::new(vec![last, StackingVec::String(string.clone()),  layer_at_add(vec[i + 1].clone())])));
                                     skip = true;
                                 }
                             } else {
