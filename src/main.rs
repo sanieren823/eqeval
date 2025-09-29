@@ -23,10 +23,22 @@ use std::string;
 // "sin()"
 
 
+
+// why strings?
+// floats can be impresice, hence this crate uses decimals 
+// to avoid carring on the floating point errors strings are never/should never be converted to floats 
+// by converting the strings to decimals directly we avoid any kind of deviation from the actual number
+
+
 // struct Atom {
 //     left: Particle,
 //     right: Particle,
 //     op: Operator,
+// }
+
+// struct Action {
+//     x: Particle,
+//     fnc: Function,
 // }
 
 // // all calculations should be done with fractions (if at least one division/fraction is in the equation)
@@ -80,11 +92,29 @@ enum StackingVec {
     Vector(Box<Vec<StackingVec>>),
 }
 
+macro_rules! eval {
+    ($arg1: expr) => {
+        eval($arg1, false, vec![])
+    };
+    ($arg1: expr, true) => {
+        eval($arg1, true, vec![])
+    };
+    ($arg1: expr, false) => {
+        eval($arg1, false, vec![])
+    };
+    ($arg1: expr, $arg2: expr) => {
+        eval($arg1, false, $arg2)
+    };
+    ($arg1: expr, $arg2: expr, $arg3: expr) => {
+        eval($arg1, $arg2, $arg3)
+    };
+}
+
 
 fn main() {
     println!("Hello, world!");
     let number = dec!(-1.23);
-    println!("{:?}", layerize("#32! + (9^0.35) * 1^2!@8 - (4 + 5(3sin(0.213) - 9)) * abs(2.23) + #0 + 7.0cos(-31.9)(3)!^2"));
+    println!("{:?}", eval!("#32! + (9^0.35) * 1^2!@8 - (4 + 5(3sin(0.213) - 9)) * abs(2.23) + #0 + 7.0cos(-31.9)(3)!^2"));
 }
 
 
@@ -99,9 +129,22 @@ fn main() {
 //     let vec_dec: Vec<Decimal> = decimalize(vec_str);
 // }
 
+fn eval(equation: &str, deg: bool, custom_vars: Vec<&str>) { // i'd change the parameter type from vec to a hashmap?? (kinda depends on the implementation) // equation: the equation that should be evaluated; deg: whether the degrees should be used to solve trigonometric functions; custom_vars: custom variables added by the user
+    let injected: String = inject_vars(equation, custom_vars);
+    let layerized: StackingVec = layerize(&injected);
+    let cleaned: StackingVec = clean(layerized);
+    println!("i");
+    println!("{:?}", cleaned);
+    // let decimalized = 
+
+}
+
+fn inject_vars(equation: &str, custom_vars: Vec<&str>) -> String {
+    equation.to_string()
+}
+
 
 fn layerize(equation: &str) -> StackingVec {
-    // replace variables
     let clean_vec: Vec<char> = equation
     .chars()
     .filter(|c| !c.is_whitespace())
@@ -122,10 +165,39 @@ fn layerize(equation: &str) -> StackingVec {
     println!("{:?}", factorialless);
     let moduloless: StackingVec = layer_at_mod(factorialless);
     println!("{:?}", moduloless);
-    let fully_split: StackingVec = layer_at_mplv(moduloless);
-    println!("{:?}", fully_split);
-    fully_split
+    let multipilicativeless: StackingVec = layer_at_mplv(moduloless);
+    println!("{:?}", multipilicativeless);
+    let subtractionless: StackingVec = layer_at_neg(multipilicativeless);
+    println!("{:?}", subtractionless);
+    let additionless: StackingVec = layer_at_add(subtractionless);
+    println!("{:?}", additionless);
+    additionless
 }
+
+
+fn clean(sv: StackingVec) -> StackingVec {
+    match sv {
+        StackingVec::String(string) => return StackingVec::String(string),
+        StackingVec::Vector(vec) => {
+            match vec.len() {
+                1 => clean(vec[0].clone()),
+                _ => {
+                    let mut return_vec: Vec<StackingVec> = Vec::new();
+                    for el in vec.iter() {
+                        return_vec.push(clean(el.clone()));
+                    }
+                    StackingVec::Vector(Box::new(return_vec))
+                },
+            }
+        },
+    }
+    
+}
+
+
+
+
+
 
 // // might wanna change the type
 // fn decimalize(vec_str: Vec<&str>) -> Vec<Decimal> {
@@ -141,6 +213,35 @@ fn layerize(equation: &str) -> StackingVec {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+fn get_type(c: char) -> Type{
+    match c {
+        c if c.is_ascii_digit() || c == '.' => Type::Number,
+        c if c.is_alphabetic() => Type::Letter,
+        '+' | '-' | '*' | '/' | '^' | '@' => Type::Operator,
+        '!' => Type::Factorial,
+        '(' => Type::BrOpen,
+        ')' => Type::BrClosed,
+        '#' => Type::Variable,
+        _ => Type::Undefined,
+    }
+}
 
 impl StackingVec {
     fn unwrap_sv_string(self) -> String {
@@ -175,6 +276,175 @@ fn convert_stacking(vec: Vec<&str>) -> StackingVec {
         return_vec.push(StackingVec::String(el.to_string()));
     }
     StackingVec::Vector(Box::new(return_vec))
+}
+
+fn merge(vec: &Vec<char>) -> Vec<String> {
+    let mut substr: String = String::new();;
+    let mut char_type: bool = true; // true: Type::Number; false: Type::Letter
+    let mut var_sub: String = String::new();
+    let mut new_vec: Vec<String> = Vec::new();
+    let mut var: bool = false;
+    for window in vec.windows(2) {
+        let type1: Type = get_type(window[0]);
+        let type2: Type = get_type(window[1]);
+        let string: String = window[0].to_string();
+        // if type1 == Type::Variable {
+        //     if !var_sub.is_empty() { 
+        //         new_vec.push(var_sub); 
+        //         var_sub = String::new(); 
+        //     }
+        //     var = true;
+        //     var_sub.push('#');
+        // } 
+        if var {
+            match type1 {
+                Type::Number => var_sub.push(window[0]),
+                Type::Variable => {
+                    if !var_sub.is_empty() { 
+                        new_vec.push(var_sub); 
+                        var_sub = String::new(); 
+                    }
+                    var_sub.push('#');
+                },
+                _ => {
+                    new_vec.push(var_sub);
+                    var_sub = String::new();
+                    var = false;
+                    new_vec.push(string);
+                },
+            }
+        } else {
+            match type1 {
+                Type::Number => {
+                    char_type = true;
+                    if !char_type {
+                        new_vec.push(substr.clone());
+                        substr = String::new();
+                    }
+                    substr.push(window[0]);
+                    if type2 != Type::Operator && type2 != Type::BrClosed && type2 != Type::Number && type2 != Type::Factorial{
+                        new_vec.push(substr.clone());
+                        new_vec.push("*".to_string());
+                        substr = String::new(); 
+                        
+                    }
+                    
+                },
+                Type::Letter => {
+                    char_type = false;
+                    if char_type {
+                        new_vec.push(substr.clone());
+                        substr = String::new();
+                        char_type ^= true;
+                    } 
+                    substr.push(window[0])
+                },
+                Type::Operator => {
+                    if !substr.is_empty() { 
+                        new_vec.push(substr.clone()); 
+                        substr = String::new(); 
+                    }
+                    new_vec.push(string);
+                },
+                Type::Factorial => {
+                    if !substr.is_empty() { 
+                        new_vec.push(substr.clone()); 
+                        substr = String::new(); 
+                    }
+                    new_vec.push(string);
+                },
+                Type::BrOpen => {
+                    if !substr.is_empty() { 
+                        new_vec.push(substr.clone()); 
+                        substr = String::new(); 
+                    }
+                    new_vec.push(string);
+                },
+                Type::BrClosed => {
+                    if !substr.is_empty() { 
+                        new_vec.push(substr.clone()); 
+                        substr = String::new(); 
+                    }
+                    new_vec.push(string);
+                    if type2 != Type::Operator && type2 != Type::BrClosed && type2 != Type::Factorial {
+                        new_vec.push("*".to_string());
+                    }
+                },
+                Type::Variable => {
+                    if !var_sub.is_empty() { 
+                        new_vec.push(var_sub); 
+                        var_sub = String::new(); 
+                    }
+                    var = true;
+                    var_sub.push('#');
+                },
+                Type::Undefined => {
+                    if !substr.is_empty() { 
+                        new_vec.push(substr.clone()); 
+                        substr = String::new(); 
+                    }
+                    new_vec.push(string);
+                },
+               
+            }
+        }
+    }
+    let last;
+    match vec.last() {
+        Some(el) => last = *el,
+        None => return new_vec,
+    } 
+    match get_type(last) {
+        Type::Number => {
+            if var {
+                var_sub.push(last);
+                new_vec.push(var_sub); 
+            } else {
+                if char_type {
+                    substr.push(last);
+                    new_vec.push(substr.clone()); 
+                } else {
+                    if !substr.is_empty() {
+                        new_vec.push(substr.clone()); 
+                    }
+                    new_vec.push(last.to_string()); 
+                }
+            }
+        },
+        Type::Letter => {
+            if var {
+                new_vec.push(var_sub); 
+                new_vec.push(last.to_string()); 
+            } else {
+                if !char_type {
+                    substr.push(last);
+                    new_vec.push(substr.clone()); 
+                } else {
+                    if !substr.is_empty() {
+                        new_vec.push(substr.clone()); 
+                    }
+                    new_vec.push(last.to_string()); 
+                }
+            }
+        },
+        Type::Factorial => {
+            if !var_sub.is_empty() {
+                new_vec.push(var_sub.clone());
+            }
+            new_vec.push("!".to_string());
+        }
+        Type::BrClosed | Type::Undefined => {
+            if !substr.is_empty() { 
+                new_vec.push(substr.clone()); 
+            }
+            new_vec.push(last.to_string());
+        },
+        _ => (),
+
+    
+    }
+    
+    new_vec
 }
 
 // TODO: convert to parameter type: StackingVec
@@ -390,185 +660,81 @@ fn layer_at_mplv(sv: StackingVec) -> StackingVec {
     StackingVec::Vector(Box::new(return_vec))
 }
 
-fn merge(vec: &Vec<char>) -> Vec<String> {
-    let mut substr: String = String::new();;
-    let mut char_type: bool = true; // true: Type::Number; false: Type::Letter
-    let mut var_sub: String = String::new();
-    let mut new_vec: Vec<String> = Vec::new();
-    let mut var: bool = false;
-    for window in vec.windows(2) {
-        let type1: Type = get_type(window[0]);
-        let type2: Type = get_type(window[1]);
-        let string: String = window[0].to_string();
-        // if type1 == Type::Variable {
-        //     if !var_sub.is_empty() { 
-        //         new_vec.push(var_sub); 
-        //         var_sub = String::new(); 
-        //     }
-        //     var = true;
-        //     var_sub.push('#');
-        // } 
-        if var {
-            match type1 {
-                Type::Number => var_sub.push(window[0]),
-                Type::Variable => {
-                    if !var_sub.is_empty() { 
-                        new_vec.push(var_sub); 
-                        var_sub = String::new(); 
+fn layer_at_neg(sv: StackingVec) -> StackingVec {
+    let mut return_vec: Vec<StackingVec> = Vec::new();
+    let mut skip: bool = false;
+    match sv {
+        StackingVec::String(String) => (),
+        StackingVec::Vector(vec) => {
+            for (i, el) in vec.iter().enumerate() {
+                if skip {
+                    skip = false;
+                } else {
+                    match el {
+                        StackingVec::String(string) => {
+                            if "-" == string.to_string() {
+                                if i < vec.len() - 1 {
+                                    return_vec.push(StackingVec::String("+".to_string()));
+                                    return_vec.push(StackingVec::Vector(Box::new(vec![StackingVec::String(string.clone()), vec[i + 1].clone()])));
+                                    skip = true;
+                                }
+                            } else {
+                                return_vec.push(el.clone());
+                            }
+                        },
+                        StackingVec::Vector(vec) => return_vec.push(layer_at_neg(el.clone())),
                     }
-                    var_sub.push('#');
-                },
-                _ => {
-                    new_vec.push(var_sub);
-                    var_sub = String::new();
-                    var = false;
-                    new_vec.push(string);
-                },
+                }
+                
+
             }
-        } else {
-            match type1 {
-                Type::Number => {
-                    char_type = true;
-                    if !char_type {
-                        new_vec.push(substr.clone());
-                        substr = String::new();
-                    }
-                    substr.push(window[0]);
-                    if type2 != Type::Operator && type2 != Type::BrClosed && type2 != Type::Number && type2 != Type::Factorial{
-                        new_vec.push(substr.clone());
-                        new_vec.push("*".to_string());
-                        substr = String::new(); 
-                        
+        },
+    }
+    StackingVec::Vector(Box::new(return_vec))
+}
+
+fn layer_at_add(sv: StackingVec) -> StackingVec {
+    let mut return_vec: Vec<StackingVec> = Vec::new();
+    let mut skip: bool = false;
+    match sv {
+        StackingVec::String(String) => (),
+        StackingVec::Vector(vec) => {
+            for (i, el) in vec.iter().enumerate() {
+                if skip {
+                    skip = false;
+                } else { 
+                    match el {
+                        StackingVec::String(string) => {
+                            if "+" == string.to_string() {
+                                if i > 0 && i < vec.len() - 1 {
+                                    let last = return_vec.last().unwrap().clone();
+                                    return_vec.pop();
+                                    return_vec.push(StackingVec::Vector(Box::new(vec![last, StackingVec::String(string.clone()), vec[i + 1].clone()])));
+                                    skip = true;
+                                }
+                            } else {
+                                return_vec.push(el.clone());
+                            }
+                        },
+                        StackingVec::Vector(vec) => return_vec.push(layer_at_add(el.clone())),
                     }
                     
-                },
-                Type::Letter => {
-                    char_type = false;
-                    if char_type {
-                        new_vec.push(substr.clone());
-                        substr = String::new();
-                        char_type ^= true;
-                    } 
-                    substr.push(window[0])
-                },
-                Type::Operator => {
-                    if !substr.is_empty() { 
-                        new_vec.push(substr.clone()); 
-                        substr = String::new(); 
-                    }
-                    new_vec.push(string);
-                },
-                Type::Factorial => {
-                    if !substr.is_empty() { 
-                        new_vec.push(substr.clone()); 
-                        substr = String::new(); 
-                    }
-                    new_vec.push(string);
-                },
-                Type::BrOpen => {
-                    if !substr.is_empty() { 
-                        new_vec.push(substr.clone()); 
-                        substr = String::new(); 
-                    }
-                    new_vec.push(string);
-                },
-                Type::BrClosed => {
-                    if !substr.is_empty() { 
-                        new_vec.push(substr.clone()); 
-                        substr = String::new(); 
-                    }
-                    new_vec.push(string);
-                    if type2 != Type::Operator && type2 != Type::BrClosed && type2 != Type::Factorial {
-                        new_vec.push("*".to_string());
-                    }
-                },
-                Type::Variable => {
-                    if !var_sub.is_empty() { 
-                        new_vec.push(var_sub); 
-                        var_sub = String::new(); 
-                    }
-                    var = true;
-                    var_sub.push('#');
-                },
-                Type::Undefined => {
-                    if !substr.is_empty() { 
-                        new_vec.push(substr.clone()); 
-                        substr = String::new(); 
-                    }
-                    new_vec.push(string);
-                },
-               
-            }
-        }
-    }
-    let last;
-    match vec.last() {
-        Some(el) => last = *el,
-        None => return new_vec,
-    } 
-    match get_type(last) {
-        Type::Number => {
-            if var {
-                var_sub.push(last);
-                new_vec.push(var_sub); 
-            } else {
-                if char_type {
-                    substr.push(last);
-                    new_vec.push(substr.clone()); 
-                } else {
-                    if !substr.is_empty() {
-                        new_vec.push(substr.clone()); 
-                    }
-                    new_vec.push(last.to_string()); 
                 }
-            }
-        },
-        Type::Letter => {
-            if var {
-                new_vec.push(var_sub); 
-                new_vec.push(last.to_string()); 
-            } else {
-                if !char_type {
-                    substr.push(last);
-                    new_vec.push(substr.clone()); 
-                } else {
-                    if !substr.is_empty() {
-                        new_vec.push(substr.clone()); 
-                    }
-                    new_vec.push(last.to_string()); 
-                }
-            }
-        },
-        Type::Factorial => {
-            if !var_sub.is_empty() {
-                new_vec.push(var_sub.clone());
-            }
-            new_vec.push("!".to_string());
-        }
-        Type::BrClosed | Type::Undefined => {
-            if !substr.is_empty() { 
-                new_vec.push(substr.clone()); 
-            }
-            new_vec.push(last.to_string());
-        },
-        _ => (),
+                
 
-    
+            }
+        },
     }
-    
-    new_vec
+    StackingVec::Vector(Box::new(return_vec))
 }
 
-fn get_type(c: char) -> Type{
-    match c {
-        c if c.is_ascii_digit() || c == '.' => Type::Number,
-        c if c.is_alphabetic() => Type::Letter,
-        '+' | '-' | '*' | '/' | '^' | '@' => Type::Operator,
-        '!' => Type::Factorial,
-        '(' => Type::BrOpen,
-        ')' => Type::BrClosed,
-        '#' => Type::Variable,
-        _ => Type::Undefined,
-    }
-}
+
+
+
+
+
+
+
+
+
 
