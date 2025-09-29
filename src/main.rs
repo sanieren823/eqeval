@@ -93,21 +93,46 @@ enum StackingVec {
 }
 
 macro_rules! eval {
-    ($arg1: expr) => {
-        eval($arg1, false, vec![])
+    ($equation: expr) => {
+        eval($equation, false, vec![], vec![])
     };
-    ($arg1: expr, true) => {
-        eval($arg1, true, vec![])
+    ($equation: expr, true) => {
+        eval($equation, true, vec![], vec![])
     };
-    ($arg1: expr, false) => {
-        eval($arg1, false, vec![])
+    ($equation: expr, false) => {
+        eval($equation, false, vec![], vec![])
     };
-    ($arg1: expr, $arg2: expr) => {
-        eval($arg1, false, $arg2)
+    ($equation: expr, vars: $vars: expr) => {
+        eval($equation, false, $vars, vec![])
     };
-    ($arg1: expr, $arg2: expr, $arg3: expr) => {
-        eval($arg1, $arg2, $arg3)
+    ($equation: expr, func: $func: expr) => {
+        eval($equation, false, vec![], $func)
     };
+    ($equation: expr, true, vars: $vars: expr) => {
+        eval($equation, true, $vars, vec![])
+    };
+    ($equation: expr, false, vars: $vars: expr) => {
+        eval($equation, false, $vars, vec![])
+    };
+    ($equation: expr, true, func: $func: expr) => {
+        eval($equation, true, vec![], $func)
+    };
+    ($equation: expr, false, func: $func: expr) => {
+        eval($equation, false, vec![], $func)
+    };
+    ($equation: expr, vars: $vars: expr, func: $func: expr) => {
+        eval($equation, false, $vars, $func)
+    };
+    ($equation: expr, $deg: expr, $vars: expr, $func: expr) => {
+        eval($equation, $deg, $vars, $func)
+    };
+    ($equation: expr, $deg: expr, vars: $vars: expr, func: $func: expr) => {
+        eval($equation, $deg, $vars, $func)
+    };
+    ($equation: expr, deg: $deg: expr, vars: $vars: expr, func: $func: expr) => {
+        eval($equation, $deg, $vars, $func)
+    };
+    
 }
 
 
@@ -129,8 +154,8 @@ fn main() {
 //     let vec_dec: Vec<Decimal> = decimalize(vec_str);
 // }
 
-fn eval(equation: &str, deg: bool, custom_vars: Vec<&str>) { // i'd change the parameter type from vec to a hashmap?? (kinda depends on the implementation) // equation: the equation that should be evaluated; deg: whether the degrees should be used to solve trigonometric functions; custom_vars: custom variables added by the user
-    let injected: String = inject_vars(equation, custom_vars);
+fn eval(equation: &str, deg: bool, custom_vars: Vec<&str>, custom_func: Vec<&str>) { // i'd change the parameter type from vec to a hashmap?? (kinda depends on the implementation) // equation: the equation that should be evaluated; deg: whether the degrees should be used to solve trigonometric functions; custom_vars: custom variables added by the user
+    let injected: String = inject(equation, deg, custom_vars, custom_func);
     let layerized: StackingVec = layerize(&injected);
     let cleaned: StackingVec = clean(layerized);
     println!("{:?}", cleaned);
@@ -138,7 +163,7 @@ fn eval(equation: &str, deg: bool, custom_vars: Vec<&str>) { // i'd change the p
 
 }
 
-fn inject_vars(equation: &str, custom_vars: Vec<&str>) -> String {
+fn inject(equation: &str, deg: bool, custom_vars: Vec<&str>, custom_func: Vec<&str>) -> String { // custom_func: ??
     equation.to_string()
 }
 
@@ -671,7 +696,6 @@ fn layer_at_neg(sv: StackingVec) -> StackingVec {
                     match el {
                         StackingVec::String(string) => {
                             if "-" == string.to_string() {
-                                println!("{:?}", el);
                                 if i > 0 && i < vec.len() - 1 {
                                     return_vec.push(StackingVec::String("+".to_string()));
                                     return_vec.push(StackingVec::Vector(Box::new(vec![StackingVec::String(string.clone()), layer_at_neg(vec[i + 1].clone())])));
