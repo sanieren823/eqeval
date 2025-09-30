@@ -30,49 +30,49 @@ use std::string;
 // by converting the strings to decimals directly we avoid any kind of deviation from the actual number
 
 
-// struct Atom {
-//     left: Particle,
-//     right: Particle,
-//     op: Operator,
-// }
+struct Atom {
+    left: Box<Particle>,
+    right: Box<Particle>,
+    op: Operator,
+}
 
-// struct Action {
-//     x: Particle,
-//     fnc: Function,
-// }
+struct Action {
+    x: Box<Particle>,
+    fnc: Function,
+}
 
-// // all calculations should be done with fractions (if at least one division/fraction is in the equation)
-// struct Fraction {
-//     numerator: Particle,
-//     denominator: Particle,  
-// }
+// all calculations should be done with fractions (if at least one division/fraction is in the equation)
+struct Fraction {
+    numerator: Box<Particle>,
+    denominator: Box<Particle>,  
+}
 
-// enum Particle {
-//     Num(Number),
-//     Fnc(Function, Vec<Decimal>),
-//     Res(Atom),
-// }
+enum Particle {
+    Num(Box<Number>),
+    Fnc(Box<Action>),
+    Res(Box<Atom>),
+}
 
-// enum Operator {
-//     Addition,
-//     Subtraction, // do we even need subtraction?
-//     Multiplication,
-//     Division,
-//     Modulu,
-//     Exponentiation,
-//     Logarithm
+enum Operator {
+    Addition,
+    Subtraction, // do we even need subtraction?
+    Multiplication,
+    Division, // and division?
+    Modulu,
+    Exponentiation,
+    Logarithm
 
-// }
-// enum Number {
-//     Frc(Fraction),
-//     Num(Decimal),
-// }
+}
+enum Number {
+    Frc(Box<Fraction>),
+    Num(Decimal),
+}
 
-// enum Function {
-//     Sine,
-//     Cosine,
-//     Tangent,
-// }
+enum Function {
+    Sine,
+    Cosine,
+    Tangent,
+}
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 enum Type {
@@ -135,6 +135,35 @@ macro_rules! eval {
     
 }
 
+fn get_type(c: char) -> Type{
+    match c {
+        c if c.is_ascii_digit() || c == '.' => Type::Number,
+        c if c.is_alphabetic() => Type::Letter,
+        '+' | '-' | '*' | '/' | '^' | '@' => Type::Operator,
+        '!' => Type::Factorial,
+        '(' => Type::BrOpen,
+        ')' => Type::BrClosed,
+        '#' => Type::Variable,
+        _ => Type::Undefined,
+    }
+}
+
+impl StackingVec {
+    fn unwrap_sv_string(self) -> String {
+        match self {
+            StackingVec::String(string) => string.clone(),
+            StackingVec::Vector(_) => panic!("Called unwrap_sv_string on Vec variant"),
+        }
+    }
+    
+    fn unwrap_sv_vec(self) -> Vec<StackingVec> {
+        match self {
+            StackingVec::String(_) => panic!("Called unwrap_sv_vec on String variant"),
+            StackingVec::Vector(vec) => *vec.clone(),
+        }
+    }
+}
+
 
 fn main() {
     println!("Hello, world!");
@@ -159,7 +188,7 @@ fn eval(equation: &str, deg: bool, custom_vars: Vec<&str>, custom_func: Vec<&str
     let layerized: StackingVec = layerize(&injected);
     let cleaned: StackingVec = clean(layerized);
     println!("{:?}", cleaned);
-    // let decimalized = 
+    let decimalized: Particle = decimalize(cleaned, custom_func);
 
 }
 
@@ -223,65 +252,71 @@ fn clean(sv: StackingVec) -> StackingVec {
 
 
 
-// // might wanna change the type
-// fn decimalize(vec_str: Vec<&str>) -> Vec<Decimal> {
-//     let mut vec_dec: Vec<Decimal> = Vec::new();
-// }
+// might wanna change the type
+fn decimalize(sv: StackingVec, custom_func: Vec<&str>) -> Particle { // replace with hashmap
+    let mut vec_dec: Vec<Decimal> = Vec::new();
+    match sv {
+        StackingVec::String(string) => Particle::Num(Box::new(Number::Num(dec(&string)))), // replace variables
+        StackingVec::Vector(vec) => {
+            let len = vec.len();
+            match len {
+                2 => {
+                    if vec[1].unwrap_sv_string() == "!".to_string() {
+                        Particle::Fnc(Box::new(Action{fnc: fn_match("gamma"), x: Box::new(decimalize(vec[0]))}))
+                    } else if vec[0].unwrap_sv_string() == "-".to_string() {
+                        // TODO: introduce an if clause that checks if the latter is a number --> rewrite as decimal
+                        Particle::Fnc(Box::new(Action{fnc: fn_match("neg"), x: Box::new(decimalize(vec[0]))}))
+                    } else {
+                        Particle::Fnc(Box::new(Action{fnc: fn_match(vec[0]), x: Box::new(decimalize(vec[0]))}))
+                    }
+                },
+                3 => {
+                    match vec[1].unwrap_sv_string() {
+                        val if val == "+".to_string() => Particle::Res(Box::new(Atom{left: Box::new(decimalize(vec[0])), right: Box::new(decimalize(vec[2])), op: Operator::Addition})),
+                        val if val == "*".to_string() => Particle::Res(Box::new(Atom{left: Box::new(decimalize(vec[0])), right: Box::new(decimalize(vec[2])), op: Operator::Multiplication})),
+                        val if val == "/".to_string() => Particle::Num(Box::new(Number::Frc(Box::new(Fraction{numerator: Box::new(decimalize(vec[0])), denominator:Box::new(decimalize(vec[2]))})))),
+                        val if val == "%".to_string() => Particle::Res(Box::new(Atom{left: Box::new(decimalize(vec[0])), right: Box::new(decimalize(vec[2])), op: Operator::Modulu})),
+                        val if val == "^".to_string() => Particle::Res(Box::new(Atom{left: Box::new(decimalize(vec[0])), right: Box::new(decimalize(vec[2])), op: Operator::Exponentiation})),
+                        val if val == "@".to_string() => Particle::Res(Box::new(Atom{left: Box::new(decimalize(vec[0])), right: Box::new(decimalize(vec[2])), op: Operator::Logarithm})),
+                        _ => Particle::Num(Box::new(Number::Num(dec("0")))),
+                    }
+                }
+                _ => Particle::Num(Box::new(Number::Num(dec("0")))),
+            }
+        }
+    }
+}
 
 // fn dec_to_frac(dec: Decimal) -> Fraction {
     
 // }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-fn get_type(c: char) -> Type{
-    match c {
-        c if c.is_ascii_digit() || c == '.' => Type::Number,
-        c if c.is_alphabetic() => Type::Letter,
-        '+' | '-' | '*' | '/' | '^' | '@' => Type::Operator,
-        '!' => Type::Factorial,
-        '(' => Type::BrOpen,
-        ')' => Type::BrClosed,
-        '#' => Type::Variable,
-        _ => Type::Undefined,
+fn dec(string: &str) -> Decimal {
+    let parts = string.split(".").collect::<Vec<&str>>();
+    if parts.len() == 1 {
+        Decimal::new(string.parse::<i64>().unwrap(), 0)
+    } else {
+        let decimals: u32 = parts[1].chars().count().try_into().unwrap();
+        let int: i64 = parts.join("").parse::<i64>().unwrap();
+        Decimal::new(int, decimals)
     }
 }
 
-impl StackingVec {
-    fn unwrap_sv_string(self) -> String {
-        match self {
-            StackingVec::String(string) => string.clone(),
-            StackingVec::Vector(_) => panic!("Called unwrap_sv_string on Vec variant"),
-        }
-    }
-    
-    fn unwrap_sv_vec(self) -> Vec<StackingVec> {
-        match self {
-            StackingVec::String(_) => panic!("Called unwrap_sv_vec on String variant"),
-            StackingVec::Vector(vec) => *vec.clone(),
-        }
-    }
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 fn count_recursive(sv: &StackingVec) -> usize {
