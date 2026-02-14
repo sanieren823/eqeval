@@ -604,14 +604,18 @@ fn particlelize(sv: StackingVec) -> Particle { // replace with hashmap
 //     }
 // }
 
-// TODO: unwrap
 fn replace_var(string: String) -> Number {
     if is_numeric(string.clone()) {
         Number::Num(FiLong::from(string))
     } else {
         let mut chars = string.chars();
         chars.next();
-        Number::Var(chars.as_str().parse::<usize>().unwrap())
+        let num_var = chars.as_str().parse::<usize>();
+        match num_var {
+            Ok(val) => Number::Var(val),
+            Err(_) => panic!{"The sequence '{:?}' could not be parsed into a number. It tried to crete a variable out of the sequence. Make sure that you don't use the hashtag '#' in any form in the equation", chars.as_str()},
+        }
+        
     }
 
 }
@@ -973,13 +977,24 @@ fn layer_at_exp(sv: StackingVec) -> StackingVec {
                         StackingVec::String(string) => {
                             if ["^", "@"].contains(&string.as_str()) {
                                 if i > 0 && i < vec.len() - 1 {
-                                    let mut last = return_vec.last().unwrap().clone();
-                                    return_vec.pop();
+                                    let mut last = match return_vec.pop() {
+                                        Some(val) => val,
+                                        None => panic!("The vector couldn't be popped probably because the vector is empty"),
+                                    };
                                     match last {
                                         StackingVec::String(ref string) => {
                                             if string == "!" {
-                                                last = StackingVec::Vector(Box::new(vec![return_vec.last().unwrap().clone(), StackingVec::String("!".to_string())]));
-                                                return_vec.pop();
+                                                let prev = match return_vec.pop() {
+                                                    Some(val) => val,
+                                                    None => panic!("The vector couldn't be popped probably because the vector is empty"),
+                                                };
+                                                last = StackingVec::Vector(Box::new(vec![prev, StackingVec::String("!".to_string())]));
+                                            } else if string == "?" {
+                                                let prev = match return_vec.pop() {
+                                                    Some(val) => val,
+                                                    None => panic!("The vector couldn't be popped probably because the vector is empty"),
+                                                };
+                                                last = StackingVec::Vector(Box::new(vec![prev, StackingVec::String("?".to_string())]));
                                             }
                                         },
                                         StackingVec::Vector(_) => (),
@@ -1014,8 +1029,10 @@ fn layer_at_fact(sv: StackingVec) -> StackingVec {
                     StackingVec::String(string) => {
                         if "!" == string.to_string() || "?" == string.to_string() {
                             if i > 0 {
-                                let last = return_vec.last().unwrap().clone();
-                                return_vec.pop();
+                                let last = match return_vec.pop() {
+                                    Some(val) => val,
+                                    None => panic!("The vector couldn't be popped probably because the vector is empty"),
+                                };
                                 return_vec.push(StackingVec::Vector(Box::new(vec![last, StackingVec::String(string.clone())])));
                             }
                         } else {
@@ -1047,8 +1064,10 @@ fn layer_at_mod(sv: StackingVec) -> StackingVec {
                         StackingVec::String(string) => {
                             if "%" == string.to_string() {
                                 if i > 0 && i < vec.len() - 1 {
-                                    let last = return_vec.last().unwrap().clone();
-                                    return_vec.pop();
+                                    let last = match return_vec.pop() {
+                                        Some(val) => val,
+                                        None => panic!("The vector couldn't be popped probably because the vector is empty"),
+                                    };
                                     return_vec.push(StackingVec::Vector(Box::new(vec![last, StackingVec::String(string.clone()), layer_at_mod(vec[i + 1].clone())])));
                                     skip = true;
                                 }
@@ -1082,8 +1101,10 @@ fn layer_at_mplv(sv: StackingVec) -> StackingVec {
                         StackingVec::String(string) => {
                             if ["*", "/"].contains(&string.as_str()) {
                                 if i > 0 && i < vec.len() - 1 {
-                                    let last = return_vec.last().unwrap().clone();
-                                    return_vec.pop();
+                                    let last = match return_vec.pop() {
+                                        Some(val) => val,
+                                        None => panic!("The vector couldn't be popped probably because the vector is empty"),
+                                    };
                                     return_vec.push(StackingVec::Vector(Box::new(vec![last, StackingVec::String(string.clone()), layer_at_mplv(vec[i + 1].clone())])));
                                     skip = true;
                                 }
@@ -1152,8 +1173,10 @@ fn layer_at_add(sv: StackingVec) -> StackingVec {
                         StackingVec::String(string) => {
                             if "+" == string.to_string() {
                                 if i > 0 && i < vec.len() - 1 {
-                                    let last = return_vec.last().unwrap().clone();
-                                    return_vec.pop();
+                                    let last = match return_vec.pop() {
+                                        Some(val) => val,
+                                        None => panic!("The vector couldn't be popped probably because the vector is empty"),
+                                    };
                                     return_vec.push(StackingVec::Vector(Box::new(vec![last, StackingVec::String(string.clone()),  layer_at_add(vec[i + 1].clone())])));
                                     skip = true;
                                 }

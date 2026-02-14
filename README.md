@@ -74,10 +74,12 @@ The general **Order of Operations**: (lower number &rarr; parsed earlier):
 ## An Example Equation
 
 This is an example equation with variables as context:
-`
+
+``` rust
 let mut context: Vec<Variable> = Vec::new();
 context.push(Variable{name: String::from("re"), val: FiLong::two()});
 context.push(Variable{name: String::from("pl"), val: FiLong::six()});
 println!("{}", eval!("re! + (9^0.35) * 1^2!@8 - (4 + 5(3sin(0.213) - 9)) * abs(2.23) + pl? + 7.0cos(-31.9)(3)!^2", vars: context));
-`
+```
+
 > 330.40574755336320971885
