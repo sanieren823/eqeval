@@ -10,7 +10,7 @@ Add this to your `Cargo.toml`:
 [dependencies]
 eqeval = "0.1.0"
 ```
-Note: the current version only supports function with up to 2 parameters
+Note: the current version only supports function with one parameter
 
 ## Creating custom variables
 
@@ -34,7 +34,7 @@ Each function needs:
 
 ## Potential Issues
 
-- Make sure your custom functions do not include "rad_to_deg"/"deg_to_rad" in its entirety in the name
+- Make sure your custom functions do not include *rad_to_deg*/*deg_to_rad* in its entirety in the name
 - Functions musn't include any of the following symbols: #, +, -, *, /, ^, @, !, ? (I did not include a check for that; if you're actually trying to use a operand's symbol in a function name that on you)
 
 # Your first equation
@@ -54,7 +54,7 @@ These are the symbols for the operands:
 |*                |**Multiplication**                                       |12 * 4 &rarr; 48                                           |
 |/                |**Division**                                             |39 / 13 &rarr; 13                                          |
 |^                |**Exponentiation**                                       |2 ^ 8 &rarr; 256                                           |
-|@                |**Logarithm**                                            |81 @ 3 &rarr; ln(81) / ln(3) &rarr; ${\log_3 81}$ &rarr; 4 |
+|@                |**Logarithm**                                            |81 @ 3 &rarr; ${\log_3 81}$ &rarr; 4 |
 |!                |**Factorial**                                            |3! &rarr; 1 * 2 * 3 &rarr; 6                               |
 |?                |**Termial**                                              |6? &rarr; 1 + 2 + 3 + 4 + 5 + 6 &rarr; 21                  |
 
