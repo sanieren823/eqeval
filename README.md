@@ -50,7 +50,7 @@ These are the symbols for the operands:
 |Symbol           |Function                                                 |Example                                                    |
 |-----------------|---------------------------------------------------------|-----------------------------------------------------------|
 |+                |**Addition**                                             |2 + 4 &rarr; 6                                             |
-|-                |**Subtraction** or **Negative Value**                    |7 - 3 &rarr; 4 / -5 &rarr; -5                              |
+|-                |**Subtraction** or **Negative Value**                    |7 - 3 &rarr; 4 or -5 &rarr; -5                              |
 |*                |**Multiplication**                                       |12 * 4 &rarr; 48                                           |
 |/                |**Division**                                             |39 / 13 &rarr; 13                                          |
 |^                |**Exponentiation**                                       |2 ^ 8 &rarr; 256                                           |
@@ -70,3 +70,14 @@ The general **Order of Operations**: (lower number &rarr; parsed earlier):
 5. modulu
 6. multiplication/division
 7. addition/subtraction
+
+## An Example Equation
+
+This is an example equation with variables as context:
+`
+let mut context: Vec<Variable> = Vec::new();
+context.push(Variable{name: String::from("re"), val: FiLong::two()});
+context.push(Variable{name: String::from("pl"), val: FiLong::six()});
+println!("{}", eval!("re! + (9^0.35) * 1^2!@8 - (4 + 5(3sin(0.213) - 9)) * abs(2.23) + pl? + 7.0cos(-31.9)(3)!^2", vars: context));
+`
+> 330.40574755336320971885
