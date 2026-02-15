@@ -74,6 +74,7 @@ enum Particle {
     Num(Box<Number>),
     Fnc(Box<Action>),
     Res(Box<Atom>),
+    Param(Vec<Particle>),
 }
 
 #[derive(Debug, Clone)]
@@ -86,6 +87,11 @@ enum Operation {
     Exponentiation,
     Logarithm
 
+}
+
+enum FinalNumber {
+    Num(FiLong),
+    Param(Vec<FiLong>),
 }
 
 #[derive(Debug, Clone)]
@@ -111,6 +117,7 @@ enum Type {
     BrOpen,
     BrClosed,
     Variable,
+    Comma,
     Undefined,
 }
 
@@ -174,6 +181,7 @@ fn get_type(c: char) -> Type{
         '(' => Type::BrOpen,
         ')' => Type::BrClosed,
         '#' => Type::Variable,
+        ',' => Type::Comma,
         _ => Type::Undefined,
     }
 }
@@ -537,7 +545,7 @@ fn clean(sv: StackingVec) -> StackingVec {
 
 // remove custom_func
 fn particlelize(sv: StackingVec) -> Particle { // replace with hashmap
-    // println!("sv: {:?}", sv);
+    println!("sv: {:?}", sv);
     match sv {
         StackingVec::String(string) => Particle::Num(Box::new(replace_var(string))), // replace variables
         StackingVec::Vector(vec) => {
@@ -580,10 +588,25 @@ fn particlelize(sv: StackingVec) -> Particle { // replace with hashmap
                         val if val == "%".to_string() => Particle::Res(Box::new(Atom{left: Box::new(particlelize(vec[0].clone())), right: Box::new(particlelize(vec[2].clone())), op: Operation::Modulu})),
                         val if val == "^".to_string() => Particle::Res(Box::new(Atom{left: Box::new(particlelize(vec[0].clone())), right: Box::new(particlelize(vec[2].clone())), op: Operation::Exponentiation})),
                         val if val == "@".to_string() => Particle::Res(Box::new(Atom{left: Box::new(particlelize(vec[0].clone())), right: Box::new(particlelize(vec[2].clone())), op: Operation::Logarithm})),
+                        val if val == ",".to_string() => Particle::Param(vec![particlelize(vec[0].clone()), particlelize(vec[2].clone())]),
                         _ => Particle::Num(Box::new(Number::Num(FiLong::new()))),
                     }
                 }
-                _ => Particle::Num(Box::new(Number::Num(FiLong::new()))),
+                val => {
+                    let mut parameters = Vec::new();
+                    for i in 0..val {
+                        match vec[i].clone() {
+                            StackingVec::String(string) => {
+                                if string != String::from(",") {
+                                    parameters.push(particlelize(vec[i].clone()));
+                                }
+                            }
+                            StackingVec::Vector(vector) => parameters.push(particlelize(StackingVec::Vector(vector))),
+                        }
+                         
+                    }
+                    Particle::Param(parameters)
+                },
             }
         }
     }
@@ -658,8 +681,24 @@ fn realize(p: Particle, custom_vars: &HashMap<u64, Variable>, functions: &Vec<Fu
 
             }
         },
-        Particle::Fnc(action) => get_function(functions, action.fnc)(vec![realize(*action.x, custom_vars, functions)]),
+        Particle::Fnc(action) => {
+            println!("{:?}", action.x);
+            match *action.x {
+                Particle::Param(params) => {
+                    let mut parameters = Vec::new();
+                    for el in params {
+                        parameters.push(realize(el, custom_vars, functions));
+                    }
+                    get_function(functions, action.fnc)(parameters)
+                }
+                Particle::Num(num) => {
+                    get_function(functions, action.fnc)(vec![parse_num(*num, custom_vars, functions)])
+                }
+                val => get_function(functions, action.fnc)(vec![realize(val, custom_vars, functions)]),
+            }
+        },
         Particle::Num(num) => return parse_num(*num, custom_vars, functions),
+        Particle::Param(par) => panic!("Parameters must always be linked to a function. These were not. The parameters given: {:?}", par),
     }
 }
 
@@ -684,16 +723,6 @@ fn parse_num(num: Number, custom_vars: &HashMap<u64, Variable>, functions: &Vec<
 fn as_quotient(frc: Fraction, custom_vars: &HashMap<u64, Variable>, functions: &Vec<Function>) -> FiLong {
     realize(*frc.denominator, custom_vars, functions) / realize(*frc.numerator, custom_vars, functions)
 }
-
-
-
-
-
-
-
-
-
-
 
 fn count_recursive(sv: &StackingVec) -> usize {
     match sv {
@@ -757,7 +786,7 @@ fn merge(vec: &Vec<char>) -> Vec<String> {
                         substr = String::new();
                     }
                     substr.push(window[0]);
-                    if type2 != Type::Operation && type2 != Type::BrClosed && type2 != Type::Number && type2 != Type::Factorial{
+                    if type2 != Type::Operation && type2 != Type::BrClosed && type2 != Type::Number && type2 != Type::Factorial && type2 != Type::Comma {
                         new_vec.push(substr.clone());
                         new_vec.push("*".to_string());
                         substr = String::new(); 
@@ -819,6 +848,13 @@ fn merge(vec: &Vec<char>) -> Vec<String> {
                     }
                     var = true;
                     var_sub.push('#');
+                },
+                Type::Comma => {
+                    if !substr.is_empty() { 
+                        new_vec.push(substr.clone()); 
+                        substr = String::new(); 
+                    }
+                    new_vec.push(string);
                 },
                 Type::Undefined => {
                     if !substr.is_empty() { 

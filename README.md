@@ -8,9 +8,8 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-eqeval = "0.1.0"
+eqeval = "0.2.0"
 ```
-Note: the current version only supports function with one parameter
 
 ## Creating custom variables
 
@@ -84,4 +83,4 @@ fn main() {
 }
 
 ```
-The output should be: **330.40574755336320971885**
+The result should be: **330.40574755336320971885**
